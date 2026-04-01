@@ -1,4 +1,5 @@
 // backend/server.js
+import cookieParser from "cookie-parser";
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -23,15 +24,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
-app.use(express.json());
-
 app.use(
   cors({
     origin: "http://localhost:5173",
     credentials: true,
+    methods: ["GET","POST","PUT","DELETE"],
+    allowedHeaders: ["Content-Type"]
   })
 );
+app.options("*", cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
+app.use(express.json());
+app.use(cookieParser());
+// ✅ REGISTER ROUTES (CORRECT PLACE)
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/courses", courseRoutes);
+//app.use("/api/discussions", discussionRoutes);   // Replaced by communityRoutes
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/sidebar", sidebarRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/community", communityRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(
   "/videos",
@@ -44,16 +60,7 @@ app.get("/", (req, res) => {
 
 app.use("/uploads", express.static("uploads"));
 
-// ✅ REGISTER ROUTES (CORRECT PLACE)
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/courses", courseRoutes);
-//app.use("/api/discussions", discussionRoutes);   // Replaced by communityRoutes
-app.use("/api/analytics", analyticsRoutes);
-app.use("/api/sidebar", sidebarRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/community", communityRoutes);
-app.use("/api/notifications", notificationRoutes);
+
 
 // Global error handler
 app.use((err, req, res, next) => {

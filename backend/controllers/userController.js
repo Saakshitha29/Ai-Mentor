@@ -69,7 +69,11 @@ const loginUser = async (req, res) => {
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax"
+    });
     res.json({
       id: user.id,
       firstName: user.firstName,
@@ -80,7 +84,6 @@ const loginUser = async (req, res) => {
       bio: user.bio,
       avatar_url: user.avatar_url, // 🔥 ADD THIS
       purchasedCourses: user.purchasedCourses,
-      token: generateToken(user.id),
     });
   } catch (error) {
     console.error("LOGIN ERROR:", error.message);

@@ -1,118 +1,57 @@
-// frontend/src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from "axios";
 
 const AuthContext = createContext();
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 };
 
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    return !!(token && storedUser && storedUser !== "undefined");
-  });
 
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem('user');
-    try {
-      return storedUser && storedUser !== "undefined" ? JSON.parse(storedUser) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+
+  // ✅ GET USER FROM BACKEND USING COOKIE
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (!token || !storedUser || storedUser === "undefined") {
-      setIsAuthenticated(false);
+    axios.get("http://localhost:5000/api/auth/me", {
+      withCredentials: true
+    })
+    .then(res => {
+      setUser(res.data);
+      setIsAuthenticated(true);
+    })
+    .catch(() => {
       setUser(null);
-    }
+      setIsAuthenticated(false);
+    });
   }, []);
 
+  // ✅ LOGIN (NO localStorage)
   const login = (userData) => {
-    setIsAuthenticated(true);
     setUser(userData);
-    // Ensure token is extracted correctly from the response object
-    localStorage.setItem('token', userData.token);
-    localStorage.setItem('user', JSON.stringify(userData));
+    setIsAuthenticated(true);
   };
 
-  const fetchUserProfile = useCallback(async () => {
+  // ✅ LOGOUT (call backend if needed)
+  const logout = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users/profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      await axios.post("http://localhost:5000/api/auth/logout", {}, {
+        withCredentials: true
       });
-
-      if (response.ok) {
-        const userData = await response.json();
-
-        const newUser = {
-          ...userData,
-          token: localStorage.getItem("token"),
-          avatar_url: userData.avatar_url || null, // Ensure it exists
-        };
-
-        setUser(newUser);
-        localStorage.setItem("user", JSON.stringify(newUser));
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
+    } catch (err) {
+      console.log(err);
     }
-  }, []);
 
-  const logout = () => {
-    setIsAuthenticated(false);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-
-    // Clear course progress from localStorage
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('course-progress-')) {
-        localStorage.removeItem(key);
-      }
-    });
-
-    // Safety: Clear everything to prevent stale data
-    localStorage.clear();
-  };
-
-  const updateUser = (updatedUserData) => {
-    setUser((prevUser) => {
-      const newUser = {
-        ...prevUser,
-        ...updatedUserData,
-        settings: {
-          ...prevUser?.settings,
-          ...updatedUserData?.settings,
-        },
-        token: prevUser?.token || localStorage.getItem("token"),
-      };
-
-      localStorage.setItem("user", JSON.stringify(newUser));
-      return newUser;
-    });
+    setIsAuthenticated(false);
   };
 
   const value = {
     isAuthenticated,
     user,
     login,
-    logout,
-    updateUser,
-    fetchUserProfile,
+    logout
   };
 
   return (
